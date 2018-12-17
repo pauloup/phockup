@@ -4,6 +4,7 @@ import os
 import re
 import shutil
 import sys
+import threading
 
 from src.date import Date
 from src.exif import Exif
@@ -31,6 +32,7 @@ class Phockup():
         self.original_filenames = args.get('original_filenames', False)
         self.date_regex = args.get('date_regex', None)
         self.timestamp = args.get('timestamp', False)
+        self.threads = args.get('threads', 1)
 
         self.check_directories()
         self.walk_directory()
@@ -57,14 +59,27 @@ class Phockup():
         """
         Walk input directory recursively and call process_file for each file except the ignored ones
         """
+        threads = []
         for root, _, files in os.walk(self.input):
             files.sort()
-            for filename in files:
-                if filename in ignored_files:
-                    continue
 
-                file = os.path.join(root, filename)
-                self.process_file(file)
+            for i in range(0, self.threads):
+                subset = files[i::self.threads]
+                t = threading.Thread(target=self.worker, args=(root,subset,))
+                threads.append(t)
+                t.start()
+           
+    def worker(self, root, files):
+        """
+        Thread worker function
+        """
+        for filename in files:
+            if filename in ignored_files:
+                continue
+
+            file = os.path.join(root, filename)
+            self.process_file(file)
+        return
 
     def checksum(self, file):
         """
@@ -101,7 +116,10 @@ class Phockup():
         fullpath = os.path.sep.join(path)
 
         if not os.path.isdir(fullpath):
-            os.makedirs(fullpath)
+            try:
+                os.makedirs(fullpath)
+            except:
+                return
 
         return fullpath
 
@@ -139,7 +157,7 @@ class Phockup():
         if str.endswith(file, '.xmp'):
             return None
 
-        printer.line(file, True)
+        #printer.line(file, True)
 
         output, target_file_name, target_file_path = self.get_file_name_and_path(file)
 
@@ -149,14 +167,14 @@ class Phockup():
         while True:
             if os.path.isfile(target_file):
                 if self.checksum(file) == self.checksum(target_file):
-                    printer.line(' => skipped, duplicated file %s' % target_file)
+                    printer.line('%s => skipped, duplicated file %s' % (file, target_file))
                     break
             else:
                 if self.move:
                     try:
                         shutil.move(file, target_file)
                     except FileNotFoundError:
-                        printer.line(' => skipped, no such file or directory')
+                        printer.line('%s => skipped, no such file or directory' % file)
                         break
                 elif self.link:
                     os.link(file, target_file)
@@ -164,10 +182,10 @@ class Phockup():
                     try:
                         shutil.copy2(file, target_file)
                     except FileNotFoundError:
-                        printer.line(' => skipped, no such file or directory')
+                        printer.line('%s => skipped, no such file or directory' % file)
                         break
 
-                printer.line(' => %s' % target_file)
+                printer.line('%s => %s' % (file, target_file))
                 self.process_xmp(file, target_file_name, suffix, output)
                 break
 

@@ -23,9 +23,10 @@ def main(argv):
     dir_format = os.path.sep.join(['%Y', '%m', '%d'])
     original_filenames = False
     timestamp = False
+    threads = 1
 
     try:
-        opts, args = getopt.getopt(argv[2:], "d:r:mltoh", ["date=", "regex=", "move", "link", "original-names", "timestamp", "help"])
+        opts, args = getopt.getopt(argv[2:], "d:r:mltoh", ["date=", "regex=", "move", "link", "original-names", "timestamp", "threads=", "help"])
     except getopt.GetoptError:
         help(version)
         sys.exit(2)
@@ -37,7 +38,7 @@ def main(argv):
 
         if opt in ("-d", "--date"):
             if not arg:
-                printer.print.error("Date format cannot be empty")
+                printer.error("Date format cannot be empty")
             dir_format = Date().parse(arg)
 
         if opt in ("-m", "--move"):
@@ -63,6 +64,11 @@ def main(argv):
             timestamp = True
             printer.line("Using file's timestamp")
         
+        if opt in ("-x", "--threads"):
+            if not arg:
+                printer.error("Threads count needs to be set")
+            threads = int(arg)
+            printer.line("Using %s threads" % arg)
 
     if link and move:
         printer.error("Can't use move and link strategy together")
@@ -79,7 +85,8 @@ def main(argv):
         link=link,
         date_regex=date_regex,
         original_filenames=original_filenames,
-        timestamp=timestamp
+        timestamp=timestamp,
+        threads=threads
     )
 
 
