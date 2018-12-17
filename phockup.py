@@ -68,7 +68,7 @@ def main(argv):
             if not arg:
                 printer.error("Threads count needs to be set")
             threads = int(arg)
-            printer.line("Using %s threads" % arg)
+            printer.line("Using %s threads at most" % arg)
 
     if link and move:
         printer.error("Can't use move and link strategy together")

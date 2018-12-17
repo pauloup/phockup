@@ -57,21 +57,21 @@ class Phockup():
 
     def walk_directory(self):
         """
-        Walk input directory recursively and call process_file for each file except the ignored ones
+        Walk input directory recursively, split the file list into subsets and launch a thread for each one.
         """
         threads = []
         for root, _, files in os.walk(self.input):
             files.sort()
-
-            for i in range(0, self.threads):
+            max_threads = min(self.threads, len(files))
+            for i in range(0, max_threads):
                 subset = files[i::self.threads]
-                t = threading.Thread(target=self.worker, args=(root,subset,))
+                t = threading.Thread(target=self.process_file_worker, args=(root,subset,))
                 threads.append(t)
                 t.start()
            
-    def worker(self, root, files):
+    def process_file_worker(self, root, files):
         """
-        Thread worker function
+        Thread worker to call process_file for each file on a subset except the ignored ones
         """
         for filename in files:
             if filename in ignored_files:
@@ -156,8 +156,6 @@ class Phockup():
         """
         if str.endswith(file, '.xmp'):
             return None
-
-        #printer.line(file, True)
 
         output, target_file_name, target_file_path = self.get_file_name_and_path(file)
 
