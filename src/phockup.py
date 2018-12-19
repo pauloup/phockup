@@ -93,8 +93,10 @@ class Phockup():
         """
         Thread worker to call process_file for each file on a subset except the ignored ones
         """
+        exif = Exif(files)
+        
         for file in files:
-            self.process_file(file)
+            self.process_file(exif, file)
         return
 
     def checksum(self, file):
@@ -165,7 +167,7 @@ class Phockup():
         except:
             return os.path.basename(file)
 
-    def process_file(self, file):
+    def process_file(self, exif, file):
         """
         Process the file using the selected strategy
         If file is .xmp skip it so process_xmp method can handle it
@@ -173,7 +175,7 @@ class Phockup():
         if str.endswith(file, '.xmp'):
             return None
 
-        output, target_file_name, target_file_path = self.get_file_name_and_path(file)
+        output, target_file_name, target_file_path = self.get_file_name_and_path(exif, file)
 
         suffix = 1
         target_file = target_file_path
@@ -207,11 +209,11 @@ class Phockup():
             target_split = os.path.splitext(target_file_path)
             target_file = "%s-%d%s" % (target_split[0], suffix, target_split[1])
 
-    def get_file_name_and_path(self, file):
+    def get_file_name_and_path(self, exif, file):
         """
         Returns target file name and path
         """
-        exif_data = Exif(file).data()
+        exif_data = exif.get(file)
         if exif_data and 'MIMEType' in exif_data and self.is_image_or_video(exif_data['MIMEType']):
             date = Date(file).from_exif(exif_data, self.timestamp, self.date_regex)
             output = self.get_output_dir(date)

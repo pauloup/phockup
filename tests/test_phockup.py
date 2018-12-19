@@ -100,11 +100,10 @@ def test_process_file_with_filename_date(mocker):
     shutil.rmtree('output', ignore_errors=True)
     mocker.patch.object(Phockup, 'check_directories')
     mocker.patch.object(Phockup, 'walk_directory')
-    mocker.patch.object(Exif, 'data')
-    Exif.data.return_value = {
+    exif = {"input/date_20170101_010101.jpg" : {
         "MIMEType": "image/jpeg"
-    }
-    Phockup('input', 'output').process_file("input/date_20170101_010101.jpg")
+    }}
+    Phockup('input', 'output').process_file(exif, "input/date_20170101_010101.jpg")
     assert os.path.isfile("output/2017/01/01/20170101-010101.jpg")
     shutil.rmtree('output', ignore_errors=True)
 
@@ -113,7 +112,7 @@ def test_process_link_to_file_with_filename_date(mocker):
     shutil.rmtree('output', ignore_errors=True)
     mocker.patch.object(Phockup, 'check_directories')
     mocker.patch.object(Phockup, 'walk_directory')
-    Phockup('input', 'output').process_file("input/link_to_date_20170101_010101.jpg")
+    Phockup('input', 'output').process_file_worker(["input/link_to_date_20170101_010101.jpg"])
     assert os.path.isfile("output/2017/01/01/20170101-010101.jpg")
     shutil.rmtree('output', ignore_errors=True)
 
@@ -122,7 +121,7 @@ def test_process_broken_link(mocker, capsys):
     shutil.rmtree('output', ignore_errors=True)
     mocker.patch.object(Phockup, 'check_directories')
     mocker.patch.object(Phockup, 'walk_directory')
-    Phockup('input', 'output').process_file("input/not_a_file.jpg")
+    Phockup('input', 'output').process_file_worker(["input/not_a_file.jpg"])
     assert 'skipped, no such file or directory' in capsys.readouterr()[0]
     shutil.rmtree('output', ignore_errors=True)
 
@@ -132,7 +131,7 @@ def test_process_broken_link_move(mocker, capsys):
     mocker.patch.object(Phockup, 'check_directories')
     mocker.patch.object(Phockup, 'walk_directory')
     phockup = Phockup('input', 'output', move=True)
-    phockup.process_file("input/not_a_file.jpg")
+    phockup.process_file_worker(["input/not_a_file.jpg"])
     assert 'skipped, no such file or directory' in capsys.readouterr()[0]
     shutil.rmtree('output', ignore_errors=True)
 
@@ -141,7 +140,7 @@ def test_process_image_exif_date(mocker):
     shutil.rmtree('output', ignore_errors=True)
     mocker.patch.object(Phockup, 'check_directories')
     mocker.patch.object(Phockup, 'walk_directory')
-    Phockup('input', 'output').process_file("input/exif.jpg")
+    Phockup('input', 'output').process_file_worker(["input/exif.jpg"])
     assert os.path.isfile("output/2017/01/01/20170101-010101.jpg")
     shutil.rmtree('output', ignore_errors=True)
 
@@ -150,7 +149,7 @@ def test_process_image_xmp(mocker):
     shutil.rmtree('output', ignore_errors=True)
     mocker.patch.object(Phockup, 'check_directories')
     mocker.patch.object(Phockup, 'walk_directory')
-    Phockup('input', 'output').process_file("input/xmp.jpg")
+    Phockup('input', 'output').process_file_worker(["input/xmp.jpg"])
     assert os.path.isfile("output/2017/01/01/20170101-010101.jpg")
     assert os.path.isfile("output/2017/01/01/20170101-010101.jpg.xmp")
     shutil.rmtree('output', ignore_errors=True)
@@ -160,7 +159,7 @@ def test_process_image_xmp_noext(mocker):
     shutil.rmtree('output', ignore_errors=True)
     mocker.patch.object(Phockup, 'check_directories')
     mocker.patch.object(Phockup, 'walk_directory')
-    Phockup('input', 'output').process_file("input/xmp_noext.jpg")
+    Phockup('input', 'output').process_file_worker(["input/xmp_noext.jpg"])
     assert os.path.isfile("output/2017/01/01/20170101-010101.jpg")
     assert os.path.isfile("output/2017/01/01/20170101-010101.xmp")
     shutil.rmtree('output', ignore_errors=True)
@@ -170,11 +169,10 @@ def test_process_image_unknown(mocker):
     shutil.rmtree('output', ignore_errors=True)
     mocker.patch.object(Phockup, 'check_directories')
     mocker.patch.object(Phockup, 'walk_directory')
-    mocker.patch.object(Exif, 'data')
-    Exif.data.return_value = {
+    exif = {"input/UNKNOWN.jpg": {
         "MIMEType": "image/jpeg"
-    }
-    Phockup('input', 'output').process_file("input/UNKNOWN.jpg")
+    }}
+    Phockup('input', 'output').process_file(exif, "input/UNKNOWN.jpg")
     assert os.path.isfile("output/unknown/unknown.jpg")
     shutil.rmtree('output', ignore_errors=True)
 
@@ -183,7 +181,7 @@ def test_process_other(mocker):
     shutil.rmtree('output', ignore_errors=True)
     mocker.patch.object(Phockup, 'check_directories')
     mocker.patch.object(Phockup, 'walk_directory')
-    Phockup('input', 'output').process_file("input/other.txt")
+    Phockup('input', 'output').process_file_worker(["input/other.txt"])
     assert os.path.isfile("output/unknown/other.txt")
     shutil.rmtree('output', ignore_errors=True)
 
@@ -192,15 +190,17 @@ def test_process_move(mocker):
     shutil.rmtree('output', ignore_errors=True)
     mocker.patch.object(Phockup, 'check_directories')
     mocker.patch.object(Phockup, 'walk_directory')
-    mocker.patch.object(Exif, 'data')
-    Exif.data.return_value = {
-        "MIMEType": "image/jpeg"
+    exif = {
+        "input/tmp_20170101_010101.jpg" : {
+            "MIMEType": "image/jpeg"
+        },
+        "input/tmp_20170101_010101.xmp" : {}
     }
     phockup = Phockup('input', 'output', move=True)
     open("input/tmp_20170101_010101.jpg", "w").close()
     open("input/tmp_20170101_010101.xmp", "w").close()
-    phockup.process_file("input/tmp_20170101_010101.jpg")
-    phockup.process_file("input/tmp_20170101_010101.xmp")
+    phockup.process_file(exif, "input/tmp_20170101_010101.jpg")
+    phockup.process_file(exif, "input/tmp_20170101_010101.xmp")
     assert not os.path.isfile("input/tmp_20170101_010101.jpg")
     assert not os.path.isfile("input/tmp_20170101_010101.xmp")
     assert os.path.isfile("output/2017/01/01/20170101-010101.jpg")
@@ -212,15 +212,21 @@ def test_process_link(mocker):
     shutil.rmtree('output', ignore_errors=True)
     mocker.patch.object(Phockup, 'check_directories')
     mocker.patch.object(Phockup, 'walk_directory')
-    mocker.patch.object(Exif, 'data')
-    Exif.data.return_value = {
-        "MIMEType": "image/jpeg"
+    exif = {
+        "input/20170101_010101.jpg" : {
+            "MIMEType": "image/jpeg"
+        },
+        "input/20170101_010101.xmp" : {},
+        "input/tmp_20170101_010101.jpg" : {
+            "MIMEType": "image/jpeg"
+        },
+        "input/tmp_20170101_010101.xmp" : {}
     }
     phockup = Phockup('input', 'output', link=True)
     open("input/tmp_20170101_010101.jpg", "w").close()
     open("input/tmp_20170101_010101.xmp", "w").close()
-    phockup.process_file("input/tmp_20170101_010101.jpg")
-    phockup.process_file("input/tmp_20170101_010101.xmp")
+    phockup.process_file(exif, "input/tmp_20170101_010101.jpg")
+    phockup.process_file(exif, "input/tmp_20170101_010101.xmp")
     assert os.path.isfile("input/tmp_20170101_010101.jpg")
     assert os.path.isfile("input/tmp_20170101_010101.xmp")
     assert os.path.isfile("output/2017/01/01/20170101-010101.jpg")
@@ -235,9 +241,9 @@ def test_process_exists_same(mocker, capsys):
     mocker.patch.object(Phockup, 'check_directories')
     mocker.patch.object(Phockup, 'walk_directory')
     phockup = Phockup('input', 'output')
-    phockup.process_file("input/exif.jpg")
+    phockup.process_file_worker(["input/exif.jpg"])
     assert os.path.isfile("output/2017/01/01/20170101-010101.jpg")
-    phockup.process_file("input/exif.jpg")
+    phockup.process_file_worker(["input/exif.jpg"])
     assert 'skipped, duplicated file' in capsys.readouterr()[0]
     shutil.rmtree('output', ignore_errors=True)
 
@@ -247,13 +253,12 @@ def test_process_same_date_different_files_rename(mocker):
     mocker.patch.object(Phockup, 'check_directories')
     mocker.patch.object(Phockup, 'walk_directory')
     phockup = Phockup('input', 'output')
-    phockup.process_file("input/exif.jpg")
-    mocker.patch.object(Exif, 'data')
-    Exif.data.return_value = {
+    phockup.process_file_worker(["input/exif.jpg"])
+    exif = {"input/date_20170101_010101.jpg" : {
         "MIMEType": "image/jpeg",
         "CreateDate": "2017:01:01 01:01:01"
-    }
-    phockup.process_file("input/date_20170101_010101.jpg")
+    }}
+    phockup.process_file(exif, "input/date_20170101_010101.jpg")
     assert os.path.isfile("output/2017/01/01/20170101-010101-2.jpg")
     shutil.rmtree('output', ignore_errors=True)
 
@@ -263,7 +268,7 @@ def test_process_skip_xmp(mocker):
     mocker.patch.object(Phockup, 'check_directories')
     mocker.patch.object(Phockup, 'walk_directory')
     phockup = Phockup('input', 'output')
-    phockup.process_file("skip.xmp")
+    phockup.process_file_worker(["skip.xmp"])
 
 
 def test_process_skip_ignored_file():
@@ -281,7 +286,7 @@ def test_keep_original_filenames(mocker):
     shutil.rmtree('output', ignore_errors=True)
     mocker.patch.object(Phockup, 'check_directories')
     mocker.patch.object(Phockup, 'walk_directory')
-    Phockup('input', 'output', original_filenames=True).process_file("input/exif.jpg")
+    Phockup('input', 'output', original_filenames=True).process_file_worker(["input/exif.jpg"])
     assert os.path.isfile("output/2017/01/01/exif.jpg")
     assert not os.path.isfile("output/2017/01/01/20170101-010101.jpg")
     shutil.rmtree('output', ignore_errors=True)
@@ -291,7 +296,7 @@ def test_keep_original_filenames_and_filenames_case(mocker):
     shutil.rmtree('output', ignore_errors=True)
     mocker.patch.object(Phockup, 'check_directories')
     mocker.patch.object(Phockup, 'walk_directory')
-    Phockup('input', 'output', original_filenames=True).process_file("input/UNKNOWN.jpg")
+    Phockup('input', 'output', original_filenames=True).process_file_worker(["input/UNKNOWN.jpg"])
     assert os.path.isfile("output/2017/10/06/UNKNOWN.jpg")
     assert not 'unknown.jpg' in os.listdir("output/2017/10/06")
     shutil.rmtree('output', ignore_errors=True)
