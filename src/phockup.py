@@ -32,7 +32,7 @@ class Phockup():
         self.original_filenames = args.get('original_filenames', False)
         self.date_regex = args.get('date_regex', None)
         self.timestamp = args.get('timestamp', False)
-        self.threads = args.get('threads', 1)
+        self.threads = min(16, max(1, args.get('threads', 1)))
 
         self.check_directories()
         self.walk_directory()
@@ -57,27 +57,43 @@ class Phockup():
 
     def walk_directory(self):
         """
-        Walk input directory recursively, split the file list into subsets and launch a thread for each one.
+        Walk input directory recursively, split the file list into parts and launch a thread to process each one.
         """
-        threads = []
+        files_temp = []
         for root, _, files in os.walk(self.input):
-            files.sort()
-            max_threads = min(self.threads, len(files))
-            for i in range(0, max_threads):
-                subset = files[i::self.threads]
-                t = threading.Thread(target=self.process_file_worker, args=(root,subset,))
+            for file in files:
+                if file in ignored_files:
+                    continue
+                else:
+                    filename = os.path.join(root, file)
+                    files_temp.append(filename)
+        
+        files = files_temp
+        files.sort()
+        num_files = len(files)
+        num_threads = min(self.threads, num_files)
+        
+        if num_threads > 1:
+            threads = []
+            for i in range(0, num_threads):
+                files_part = files[i::num_threads]
+                t = threading.Thread(target=self.process_file_worker, args=(files_part,))
                 threads.append(t)
                 t.start()
-           
-    def process_file_worker(self, root, files):
+            
+            for t in threads:
+                t.join()
+                
+            printer.line('%s files processed using %s threads' % (num_files, num_threads))
+        else:
+            self.process_file_worker(files)
+            printer.line('%s file(s) processed' % (num_files))
+                
+    def process_file_worker(self, files):
         """
         Thread worker to call process_file for each file on a subset except the ignored ones
         """
-        for filename in files:
-            if filename in ignored_files:
-                continue
-
-            file = os.path.join(root, filename)
+        for file in files:
             self.process_file(file)
         return
 

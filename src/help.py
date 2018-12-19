@@ -66,7 +66,7 @@ OPTIONS
         This option is intended as "last resort" since the file modified date may not be accurate, 
         nevertheless it can be useful if no other date information can be obtained.
 
-    -x | --threads
-        Specify how many threads are going to be used.
+    -x <n> | --threads=<n>
+        Specify the number of threads to be used. Defaults to n=1 (multithreading disabled), with min 1 and max 16.
 """.format(version=version,
            regex="(?P<day>\d{2})\.(?P<month>\d{2})\.(?P<year>\d{4})[_-]?(?P<hour>\d{2})\.(?P<minute>\d{2})\.(?P<second>\d{2})"))
